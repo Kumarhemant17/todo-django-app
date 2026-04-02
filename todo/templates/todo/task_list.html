@@ -1,53 +1,189 @@
-<!doctype html>
+{% load static %}
+
+<!DOCTYPE html>
 <html>
-  <head>
+<head>
     <title>To-Do App</title>
-    <style>
-      body {
-        font-family: Arial;
-        background: #f4f6f8;
-        text-align: center;
-      }
-      .container {
-        width: 400px;
-        margin: 50px auto;
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-      }
-      .task {
-        display: flex;
-        justify-content: space-between;
-        margin: 10px 0;
-      }
-      .completed {
-        text-decoration: line-through;
-        color: gray;
-      }
-      button {
-        margin-left: 5px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h2>My Tasks</h2>
+    <link rel="icon" type="image/jpeg" href="{% static 'todo/favicon.jpeg' %}">
+    <link rel="stylesheet" href="{% static 'todo/style.css' %}">
+</head>
+<body>
+<div class="app-title">
+    <img src="{% static 'todo/favicon.jpeg' %}" class="logo">
+    TODO APP
+</div>
+<div class="container">
 
-      <a href="{% url 'add_task' %}">➕ Add Task</a>
+    <h2>Hello {{ name }} 👋</h2>
 
-      {% for task in tasks %}
-      <div class="task">
-        <span class="{% if task.completed %}completed{% endif %}">
-          {{ task.title }} ({{ task.priority }})
-        </span>
-
-        <div>
-          <a href="{% url 'complete_task' task.id %}">✔</a>
-          <a href="{% url 'edit_task' task.id %}">✏️</a>
-          <a href="{% url 'delete_task' task.id %}">🗑</a>
-        </div>
-      </div>
-      {% endfor %}
+    <div class="top">
+        <strong>My Tasks</strong>
     </div>
-  </body>
+
+    <!-- FILTERS -->
+    <div class="filters">
+        <a href="?filter=all{% if sort %}&sort={{ sort }}{% endif %}"
+          class="{% if filter == 'all' or not filter %}active{% endif %}">All</a> |
+
+        <a href="?filter=completed{% if sort %}&sort={{ sort }}{% endif %}"
+          class="{% if filter == 'completed' %}active{% endif %}">Completed</a> |
+
+        <a href="?filter=pending{% if sort %}&sort={{ sort }}{% endif %}"
+          class="{% if filter == 'pending' %}active{% endif %}">Pending</a>
+        <br><br>
+        <a href="?sort=priority{% if filter %}&filter={{ filter }}{% endif %}"
+          class="{% if sort == 'priority' %}active{% endif %}">
+            Sort by Priority
+        </a>
+    </div>
+
+    <!-- ADD TASK -->
+    <input type="text" id="title" placeholder="Task name">
+    <input type="datetime-local" id="due_date">
+
+    <select id="priority">
+        <option>Low</option>
+        <option>Medium</option>
+        <option>High</option>
+    </select>
+
+    <button onclick="addTask()">Add</button>
+
+    <hr>
+
+    {% csrf_token %}
+
+    <div id="task-list">
+    {% for task in tasks %}
+    <!-- ✅ OVERDUE FIXED HERE -->
+    <div class="task {% if task.is_overdue %}overdue{% endif %}" id="task-{{ task.id }}">
+        <div>
+            <span class="task-title {% if task.completed %}completed{% endif %}">
+                {{ task.title }}
+            </span>
+            <br>
+
+            <small class="task-date">
+                {% if task.due_date %}
+                    ({{ task.due_date|date:"d M, h:i A" }})
+                {% endif %}
+            </small>
+
+            <span class="priority {{ task.priority|lower }}">
+                {{ task.priority }}
+            </span>
+        </div>
+
+        <div class="task-actions">
+
+          <button class="icon-btn complete-btn"
+              onclick="toggleComplete({{ task.id }})"
+              title="Mark Complete">
+              ✓
+          </button>
+
+          <button class="icon-btn edit-btn"
+              onclick="openEditModal(
+                  {{ task.id }},
+                  '{{ task.title|escapejs }}',
+                  '{% if task.due_date %}{{ task.due_date|date:"c" }}{% endif %}',
+                  '{{ task.priority }}'
+              )"
+              title="Edit Task">
+              ✎
+          </button>
+
+          <button class="icon-btn delete-btn"
+              onclick="deleteTask({{ task.id }})"
+              title="Delete Task">
+              🗑
+          </button>
+
+      </div>
+    </div>
+    {% endfor %}
+    </div>
+
+</div>
+
+<!-- EDIT MODAL -->
+<div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+
+    <div class="modal-box">
+
+        <h3>Edit Task</h3>
+
+        <input type="hidden" id="edit_id">
+
+        <input type="text" id="edit_title" placeholder="Task name"><br><br>
+
+        <input type="datetime-local" id="edit_due_date"><br><br>
+
+        <select id="edit_priority">
+            <option>Low</option>
+            <option>Medium</option>
+            <option>High</option>
+        </select><br><br>
+
+        <button onclick="updateTask()">Update</button>
+        <button onclick="closeModal()">Cancel</button>
+
+    </div>
+</div>
+<!-- PREMIUM FOOTER -->
+<div class="footer-main">
+
+    <!-- FULL WIDTH IMAGE STRIP -->
+    <div class="footer-images">
+        <img src="https://images.unsplash.com/photo-1519681393784-d120267933ba">
+        <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee">
+        <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb">
+        <img src="https://images.unsplash.com/photo-1492724441997-5dc865305da7">
+        <img src="https://images.unsplash.com/photo-1501785888041-af3ef285b470">
+    </div>
+
+    <!-- FULL WIDTH CTA -->
+    <div class="footer-cta">
+        <h2>Stay productive with your tasks.</h2>
+
+        <div class="footer-input">
+            <input type="text" placeholder="Enter your email">
+            <button>Submit</button>
+        </div>
+    </div>
+
+    <!-- ONLY THIS PART CENTERED -->
+    <div class="footer-wrapper">
+
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>TODO APP</h3>
+                <p>Organize your daily tasks efficiently.</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <p>All Tasks</p>
+                <p>Completed</p>
+                <p>Pending</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Connect</h4>
+                <p>GitHub</p>
+                <p>LinkedIn</p>
+                <p>Contact</p>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            © 2026 Todo App • All rights reserved
+        </div>
+
+    </div>
+
+</div>
+<script src="{% static 'todo/script.js' %}"></script>
+
+</body>
 </html>
